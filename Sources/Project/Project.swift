@@ -3,6 +3,7 @@ import struct Foundation.Data
 import LibC
 
 public struct Project {
+    public let name: String
     public let path: String
     
     public var info: InfoPropertyList {
@@ -19,10 +20,27 @@ public struct Project {
             let contents = try getDirectoryContents(path)
                 .filter({ $0.name.hasSuffix(".bundle") })
             return contents.map({ "\(path)/\($0.name)/Contents" }).map(Bundle.init)
-#else
+#elseif os(iOS)
             let contents = try getDirectoryContents(path)
                 .filter({ $0.name.hasSuffix(".bundle") })
             return contents.map({ "\(path)/\($0.name)" }).map(Bundle.init)
+#endif
+        }
+    }
+    
+    public var resources: [String] {
+        get throws {
+#if os(macOS) || targetEnvironment(macCatalyst)
+            let path = path + "/Resources"
+            return try getDirectoryContents(path)
+                .map({ "\(path)/\($0.name)" })
+#elseif os(iOS)
+            let list: Set<String> = [
+                "Info.plist", "Frameworks", "embedded.mobileprovision", "PkgInfo",
+                "_CodeSignature", "__preview.dylib", name, "\(name).debug.dylib"
+            ]
+            return try getDirectoryContents(path)
+                .filter({ !list.contains($0.name) }).map({ "\(path)/\($0.name)" })
 #endif
         }
     }
@@ -32,12 +50,12 @@ public extension Project {
     static var current: Project {
         get throws {
             var components = try getExecutablePath().split(separator: "/")
+            let name = components.removeLast()
 #if os(macOS) || targetEnvironment(macCatalyst)
-            components.removeLast(1)
+            components.removeLast()
 #endif
-            components.removeLast(1)
             let path = "/" + components.joined(separator: "/")
-            return Project(path: path)
+            return Project(name: String(name), path: path)
         }
     }
 }
@@ -53,7 +71,7 @@ public extension Project {
             }
         }
         
-        public var contents: [String] {
+        public var resources: [String] {
             get throws {
 #if os(macOS) || targetEnvironment(macCatalyst)
                 let path = path + "/Resources"
