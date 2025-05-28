@@ -77,7 +77,7 @@ public extension Project {
                 let path = path + "/Resources"
                 return try getDirectoryContents(path)
                     .map({ "\(path)/\($0.name)" })
-#else
+#elseif os(iOS)
                 try getDirectoryContents(path)
                     .filter({ $0.name != "Info.plist" }).map({ "\(path)/\($0.name)" })
 #endif
